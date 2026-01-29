@@ -1,27 +1,33 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:lts-bullseye-slim'
-            args '-p 3000:3000'
-        }
-    }
+    agent any
 
     environment {
         CI = 'true'
-        DOCKER_TLS_CERTDIR = ''
     }
 
     stages {
         stage('Build') {
             steps {
-                sh 'npm install'
+                sh '''
+                  docker run --rm \
+                    -v "$PWD:/app" \
+                    -w /app \
+                    node:lts-bullseye-slim \
+                    npm install
+                '''
             }
         }
 
         stage('Test') {
             steps {
-                sh 'chmod +x ./jenkins/scripts/test.sh'
-                sh './jenkins/scripts/test.sh'
+                sh '''
+                  docker run --rm \
+                    -v "$PWD:/app" \
+                    -w /app \
+                    node:lts-bullseye-slim \
+                    chmod +x ./jenkins/scripts/test.sh && \
+                    ./jenkins/scripts/test.sh
+                '''
             }
         }
 
@@ -30,8 +36,14 @@ pipeline {
                 branch 'develop'
             }
             steps {
-                sh 'chmod -R +x ./jenkins/scripts'
-                sh './jenkins/scripts/deliver.sh'
+                sh '''
+                  docker run --rm \
+                    -v "$PWD:/app" \
+                    -w /app \
+                    node:lts-bullseye-slim \
+                    chmod -R +x ./jenkins/scripts && \
+                    ./jenkins/scripts/deliver.sh
+                '''
                 input message: 'Finished using the web site? (Click "Proceed" to continue)'
                 sh './jenkins/scripts/kill.sh'
             }
@@ -39,8 +51,14 @@ pipeline {
 
         stage('Deploy for production') {
             steps {
-                sh 'chmod -R +x ./jenkins/scripts'
-                sh './jenkins/scripts/deliver.sh'
+                sh '''
+                  docker run --rm \
+                    -v "$PWD:/app" \
+                    -w /app \
+                    node:lts-bullseye-slim \
+                    chmod -R +x ./jenkins/scripts && \
+                    ./jenkins/scripts/deliver.sh
+                '''
                 input message: 'Finished using the web site? (Click "Proceed" to continue)'
                 sh './jenkins/scripts/kill.sh'
             }
