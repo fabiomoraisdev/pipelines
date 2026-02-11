@@ -1,51 +1,30 @@
-version: '2.2'
-  
-services:
-  jenkins-docker:
-    container_name: jenkins-docker
-    image: docker:dind
-    ports:
-      - "3000:3000"
-      - "5000:5000"
-    privileged: true
-    volumes:
-       - jenkins-docker-certs:/certs/client
-       - jenkins-data:/var/jenkins_home
-       - $HOME:/home
-    restart: always
-    environment:
-       DOCKER_TLS_CERTDIR: "/certs"
-    networks:
-       jenkins:
-          aliases:
-             - docker
+version: '3.8'
 
+services:
   jenkins-blueocean:
     build:
       context: ./jenkins_build
     container_name: jenkins-blueocean
+    user: root # Necessário para interagir com o socket do Docker no macOS
     ports:
-      - "80:8080"
+      - "8080:8080"
       - "50000:50000"
     volumes:
-       - jenkins-docker-certs:/certs/client:ro
-       - jenkins-data:/var/jenkins_home
-       - $HOME:/home
+      # No macOS, o Docker Desktop mapeia o socket para este caminho padrão
+      - /var/run/docker.sock:/var/run/docker.sock
+      - jenkins-data:/var/jenkins_home
+      - $HOME:/home
     restart: always
     environment:
-       DOCKER_HOST: tcp://docker:2376
-       DOCKER_CERT_PATH: /certs/client
-       DOCKER_TLS_VERIFY: 1
-       JAVA_OPTS: "-Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true"
+      - DOCKER_TLS_VERIFY=0
+      - JAVA_OPTS=-Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
     networks:
-       jenkins:
+      - jenkins
 
 volumes:
-  jenkins-docker-certs:
-     name: jenkins-docker-certs
   jenkins-data:
-     name: jenkins-data
+    name: jenkins-data
 
 networks:
   jenkins:
-     name: jenkins
+    name: jenkins
