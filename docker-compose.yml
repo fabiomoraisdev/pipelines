@@ -1,23 +1,24 @@
 version: '3.8'
 
 services:
-  jenkins-blueocean:
+  jenkins:
     build:
       context: ./jenkins_build
+      dockerfile: Dockerfile.final
     container_name: jenkins-blueocean
-    user: root # Necessário para interagir com o socket do Docker no macOS
+    user: root
     ports:
       - "8080:8080"
       - "50000:50000"
+      - "3000:3000" # Porta para a aplicação React
     volumes:
-      # No macOS, o Docker Desktop mapeia o socket para este caminho padrão
       - /var/run/docker.sock:/var/run/docker.sock
       - jenkins-data:/var/jenkins_home
       - $HOME:/home
-    restart: always
     environment:
       - DOCKER_TLS_VERIFY=0
       - JAVA_OPTS=-Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
+    restart: always
     networks:
       - jenkins
 
