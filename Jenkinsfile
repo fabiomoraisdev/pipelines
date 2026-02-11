@@ -2,20 +2,26 @@ pipeline {
     agent {
         docker {
             image 'node:lts-bullseye-slim' 
-            // Adicionamos a montagem do socket aqui também para que o contêiner 'node' 
-            // possa executar comandos docker se necessário (como o kill.sh ou outros)
-            args '-p 3000:3000 -v /var/run/docker.sock:/var/run/docker.sock --user root'
+            // Forçamos a desativação do TLS e limpamos o caminho do certificado nos argumentos do agente
+            args '-v /var/run/docker.sock:/var/run/docker.sock --user root -e DOCKER_TLS_VERIFY=0 -e DOCKER_CERT_PATH='
         }
     }
     environment { 
         CI = 'true'
-        // Necessário para versões recentes do Node.js com pacotes antigos
         NODE_OPTIONS = '--openssl-legacy-provider'
+        // Definimos também no ambiente global do pipeline para garantir
+        DOCKER_TLS_VERIFY = '0'
+        DOCKER_CERT_PATH = ''
     }
     stages {
+        stage('Check Environment') {
+            steps {
+                // Debug para confirmar que as variáveis estão corretas
+                sh 'env | grep DOCKER || true'
+            }
+        }
         stage('Build') {
             steps {
-                // Garantir que as permissões dos scripts estejam corretas antes de começar
                 sh 'chmod -R +x ./jenkins/scripts'
                 sh 'npm install'
             }
@@ -25,16 +31,10 @@ pipeline {
                 sh './jenkins/scripts/test.sh'
             }      
         }
-
-        stage('Deploy for production') {       
+        stage('Deploy') {       
             steps {
-                // O deliver.sh inicia o app em background
                 sh './jenkins/scripts/deliver.sh'
-                
-                // O input pausa o pipeline para você ver o resultado
-                input message: 'O aplicativo está rodando em http://localhost:3000. Clique em Proceed para encerrar.'
-                
-                // O kill.sh encerra o processo do node
+                input message: 'App rodando em http://localhost:3000. Clique para encerrar.'
                 sh './jenkins/scripts/kill.sh'
             }
         }      
